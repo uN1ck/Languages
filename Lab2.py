@@ -74,10 +74,10 @@ class lexical_scanner:
         for current in self.text:
             for pattern in Comments:
 
-                if (re.match(pattern, current) and pattern == 'Tmulticomment'):
+                if (re.match(Comments[pattern], current) and pattern == 'Tmulticomment'):
                     isComment = isComment ^ True;
 
-                if (re.match(pattern, current) and pattern != 'Tmulticomment' and isComment):
+                if (isComment and pattern == 'Tmulticomment'):
                     current = ''
                     break
 
@@ -94,6 +94,7 @@ class lexical_scanner:
     # Метод извещения об ошибке
     def markError(self, element):
         print("Lexical error at " + str(element));
+        fout.write("Lexical error at " + str(element) + "\n");
 
     # Метод чтения следующей лексемы
     # Возврщаемый тип (Имя лексемы, обозначение, индекс в строке, длина, индекс лексемы)
@@ -119,13 +120,13 @@ class lexical_scanner:
             return ('Tmod', line[start:index], start, 1, 2501)
 
         if (line[start] == '('):
-            return ('Topenbracket', line[start:index], start, 1, 3002)
+            return ('Topenbracket', line[start:index], start, 1, 3010)
         if (line[start] == ')'):
-            return ('Tclosebracket', line[start:index], start, 1, 3102)
+            return ('Tclosebracket', line[start:index], start, 1, 3111)
         if (line[start] == ':'):
-            return ('Topenblock', line[start:index], start, 1, 3202)
+            return ('Topenblock', line[start:index], start, 1, 3212)
         if (line[start] == '{'):
-            return ('Ttabblock', line[start:index], start, 1, 3302)
+            return ('Ttabblock', line[start:index], start, 1, 3313)
 
         if (line[start] == '='):
             if (len(line) > index + 1):
@@ -150,20 +151,20 @@ class lexical_scanner:
         if (re.match('[a-zA-Z]', line[start]) != None):
             while (len(line) > index) and (re.match('[a-zA-Z]', line[index]) != None):
                 index += 1
-            return ('Tid', line[start:index], start, index - start, 6003)
+            return ('Tid', line[start:index], start, index - start, 6014)
 
         if (re.match('[1-9]', line[start]) != None):
             while (len(line) > index) and (re.match('[0-9]', line[index]) != None):
                 index += 1
-            return ('Tconst10', line[start:index], start, index - start, 7003)
+            return ('Tconst10', line[start:index], start, index - start, 7015)
 
         if (start + 2 < len(line)):
             if (line[start:start + 2] == '0x'):
                 while (len(line) > index) and (re.match('[0-9A-F]', line[index]) != None):
                     index += 1
-                return ('Tconst16', line[start:index], start, index - start, 7103)
+                return ('Tconst16', line[start:index], start, index - start, 7116)
 
-        return ('Terror', line[start], 1, 0000)
+        return ('Terror', line[start], 1, 1, 0000)
 
     # Метод вывода найденных лексем
     def scanAllLexems(self):
@@ -177,28 +178,41 @@ class lexical_scanner:
                     continue
 
                 currentLexem = self.nextLexem(line, index)
-                if (currentLexem[0] == 'Terror'):
-                    fout.write(str(currentLexem))
-                    return False
+                #if (currentLexem[0] == 'Terror'):
+                    # fout.write(str(currentLexem))
+                    # return False
 
                 lexemLine.append(currentLexem)
                 index += currentLexem[3]
             self.lexemsAnalysed.append(lexemLine)
-        return True
+        return True  # self.correctLexemTiming()
 
     # Метод вывода лексем
     def showLexems(self):
         for current in self.lexemsAnalysed:
             fout.write(str(current) + "\n")
 
-    def correctLExemtiming(self):
+    def correctLexemTiming(self):
         for lexem in self.lexemsAnalysed:
-            
+            prev = ()
+            for lexem2 in lexem:
+                if (prev != () and lexem2[4] % 100 == prev[4] % 100 and lexem2[4] % 100 == 1):
+                    self.markError(("Incorrect lexem order on", (prev, lexem2)))
+                    return False
+                prev = lexem2
+        return True
+
 
 scanner = lexical_scanner()
-scanner.text = fin.readlines()
-scanner.deleteComments()
-if (scanner.scanAllLexems()):
-    scanner.showLexems()
+try:
+    scanner.text = fin.readlines()
+except Exception:
+    print(str(Exception))
+finally:
+    scanner.deleteComments()
+    if (scanner.scanAllLexems()):
+        scanner.showLexems()
+
+
 
 fout.close()
