@@ -26,56 +26,36 @@ Lexems = {'Tconst10': '[1-9][0-9]*',
           'Topenblock': ':'
           }
 
-LexemIndices = {'Tconst10': 1000,
-                'Tconst16': 1001,
-                'Tid': 1010,
-                'Topenbracket': 1000,
-                'Tclosebracket': 1000,
-                'Ttabblock': 1500,
-                'Tassignment': 2007,
-                'Tequal': 2107,
-                'Tnotequal': 2207,
-                'Tmore': 2307,
-                'Tless': 2407,
-                'Tequalmore': 2507,
-                'Tequalless': 2607,
-                'Tplus': 2707,
-                'Tminus': 2807,
-                'Tmul': 2907,
-                'Tdiv': 3007,
-                'Tdivint': 3107,
-                'Tmod': 3207,
-                'Tcomma': 3307,
-                'Topenblock': 3407
-                }
+keyWords = {'def', 'while', 'return', 'or', 'and'}
+keyWordsId = {'def': '6114', 'while': '6214', 'return': '6314', 'or': '6414', 'and': '6514'}
 
 Comments = {'Tcomment': '#[^\n]*',
             'Teol': '\n',
             'Tmulticomment': '\'\'\''}
 
 Ignores = {'Tspace': ' ',
-           'Tdotcomma': ';'
+           'Tdotcomma': ''
            }
 
 
 # Класс сканера
 class lexical_scanner:
     def __init__(self):
-        self.text = [];
-        self.preparedText = [];
-        self.lexemsAnalysed = [];
+        self.text = []
+        self.preparedText = []
+        self.lexemsAnalysed = []
 
     # Метод удаления всех комментариев
     def deleteComments(self):
 
-        isComment = False;
+        isComment = False
         result = []
 
         for current in self.text:
             for pattern in Comments:
 
                 if (re.match(Comments[pattern], current) and pattern == 'Tmulticomment'):
-                    isComment = isComment ^ True;
+                    isComment = isComment ^ True
 
                 if (isComment and pattern == 'Tmulticomment'):
                     current = ''
@@ -87,14 +67,14 @@ class lexical_scanner:
             if (len(current) > 0 and re.fullmatch('_+', current) == None):
                 # print(current)
                 result.append(current)
-        self.preparedText = result;
+        self.preparedText = result
         if (isComment):
-            self.markError(("No ending on comment"));
+            self.markError(("No ending on comment"))
 
     # Метод извещения об ошибке
     def markError(self, element):
-        print("Lexical error at " + str(element));
-        fout.write("Lexical error at " + str(element) + "\n");
+        print("Lexical error at " + str(element))
+        fout.write("Lexical error at " + str(element) + "\n")
 
     # Метод чтения следующей лексемы
     # Возврщаемый тип (Имя лексемы, обозначение, индекс в строке, длина, индекс лексемы)
@@ -151,7 +131,10 @@ class lexical_scanner:
         if (re.match('[a-zA-Z]', line[start]) != None):
             while (len(line) > index) and (re.match('[a-zA-Z]', line[index]) != None):
                 index += 1
-            return ('Tid', line[start:index], start, index - start, 6014)
+            if (line[start:index] in keyWords):
+                return ('Tkeyword', line[start:index], start, index - start, keyWordsId[line[start:index]])
+            else:
+                return ('Tid', line[start:index], start, index - start, 6014)
 
         if (re.match('[1-9]', line[start]) != None):
             while (len(line) > index) and (re.match('[0-9]', line[index]) != None):
@@ -173,14 +156,14 @@ class lexical_scanner:
             index = 0
 
             while len(line) > index:
-                if (re.match(' |;', line[index]) != None):
+                if (re.match(' ', line[index]) != None):
                     index += 1
                     continue
 
                 currentLexem = self.nextLexem(line, index)
-                #if (currentLexem[0] == 'Terror'):
-                    # fout.write(str(currentLexem))
-                    # return False
+                # if (currentLexem[0] == 'Terror'):
+                # fout.write(str(currentLexem))
+                # return False
 
                 lexemLine.append(currentLexem)
                 index += currentLexem[3]
@@ -206,13 +189,12 @@ class lexical_scanner:
 scanner = lexical_scanner()
 try:
     scanner.text = fin.readlines()
+
 except Exception:
     print(str(Exception))
 finally:
     scanner.deleteComments()
     if (scanner.scanAllLexems()):
         scanner.showLexems()
-
-
 
 fout.close()
