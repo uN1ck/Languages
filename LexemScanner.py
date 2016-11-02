@@ -1,8 +1,5 @@
 import re
 
-fin = open("input.txt", "r")
-fout = open("output.txt", "w")
-
 Lexems = {'Tconst10': '[1-9][0-9]*',
           'Tconst16': '0x[0-9A-F]+',
           'Tid': '[a-zA-Z]+',
@@ -26,24 +23,38 @@ Lexems = {'Tconst10': '[1-9][0-9]*',
           'Topenblock': ':'
           }
 
-keyWords = {'def', 'while', 'return', 'or', 'and'}
-keyWordsId = {'def': '6114', 'while': '6214', 'return': '6314', 'or': '6414', 'and': '6514'}
-
+keyWords = {'def', 'while', 'return', 'or', 'and', 'if'}
+keyWordsId = {'def': '6114', 'while': '6214', 'return': '6314', 'or': '6414', 'and': '6514', 'if': '6614'}
 Comments = {'Tcomment': '#[^\n]*',
             'Teol': '\n',
             'Tmulticomment': '\'\'\''}
-
-Ignores = {'Tspace': ' ',
-           'Tdotcomma': ''
-           }
 
 
 # Класс сканера
 class lexical_scanner:
     def __init__(self):
         self.text = []
-        self.preparedText = []
         self.lexemsAnalysed = []
+
+    def initialize(self, text):
+        self.text = text
+
+    def setBlocks(self):
+        current = self.text[0]
+        prev = current
+        tabGap = 0
+
+        for line in self.text:
+            currentTabGap = 0
+            for current in range(len(line)):
+                if line[current] == ':':
+                    line[current] = '{'
+
+            while (line[currentTabGap] == ' '): currentTabGap += 1
+
+            if (currentTabGap != tabGap):
+                line += " }"
+                tabGap = currentTabGap
 
     # Метод удаления всех комментариев
     def deleteComments(self):
@@ -67,14 +78,14 @@ class lexical_scanner:
             if (len(current) > 0 and re.fullmatch('_+', current) == None):
                 # print(current)
                 result.append(current)
-        self.preparedText = result
+        self.text = result
         if (isComment):
             self.markError(("No ending on comment"))
 
     # Метод извещения об ошибке
     def markError(self, element):
         print("Lexical error at " + str(element))
-        fout.write("Lexical error at " + str(element) + "\n")
+        raise Exception('Lexical error', str(element))
 
     # Метод чтения следующей лексемы
     # Возврщаемый тип (Имя лексемы, обозначение, индекс в строке, длина, индекс лексемы)
@@ -84,6 +95,10 @@ class lexical_scanner:
 
         if (line[start] == ','):
             return ('Tcomma', line[start:index], start, 1, 1001)
+        if (line[start] == '{'):
+            return ('Topenblock', line[start:index], start, 1, 9001)
+        if (line[start] == '}'):
+            return ('Tcloseblock', line[start:index], start, 1, 9002)
 
         if (line[start] == '+'):
             return ('Tplus', line[start:index], start, 1, 2001)
@@ -103,10 +118,6 @@ class lexical_scanner:
             return ('Topenbracket', line[start:index], start, 1, 3010)
         if (line[start] == ')'):
             return ('Tclosebracket', line[start:index], start, 1, 3111)
-        if (line[start] == ':'):
-            return ('Topenblock', line[start:index], start, 1, 3212)
-        if (line[start] == '{'):
-            return ('Ttabblock', line[start:index], start, 1, 3313)
 
         if (line[start] == '='):
             if (len(line) > index + 1):
@@ -151,7 +162,10 @@ class lexical_scanner:
 
     # Метод вывода найденных лексем
     def scanAllLexems(self):
-        for line in self.preparedText:
+        self.deleteComments()
+        self.setBlocks()
+
+        for line in self.text:
             lexemLine = []
             index = 0
 
@@ -159,42 +173,26 @@ class lexical_scanner:
                 if (re.match(' ', line[index]) != None):
                     index += 1
                     continue
-
                 currentLexem = self.nextLexem(line, index)
-                # if (currentLexem[0] == 'Terror'):
-                # fout.write(str(currentLexem))
-                # return False
+
+                if (currentLexem[0] == "Terror"):
+                    self.markError(currentLexem)
 
                 lexemLine.append(currentLexem)
                 index += currentLexem[3]
             self.lexemsAnalysed.append(lexemLine)
-        return True  # self.correctLexemTiming()
-
-    # Метод вывода лексем
-    def showLexems(self):
-        for current in self.lexemsAnalysed:
-            fout.write(str(current) + "\n")
-
-    def correctLexemTiming(self):
-        for lexem in self.lexemsAnalysed:
-            prev = ()
-            for lexem2 in lexem:
-                if (prev != () and lexem2[4] % 100 == prev[4] % 100 and lexem2[4] % 100 == 1):
-                    self.markError(("Incorrect lexem order on", (prev, lexem2)))
-                    return False
-                prev = lexem2
         return True
 
 
-scanner = lexical_scanner()
-try:
-    scanner.text = fin.readlines()
+class LexemScanner:
+    lexems = []
+    ls = lexical_scanner()
 
-except Exception:
-    print(str(Exception))
-finally:
-    scanner.deleteComments()
-    if (scanner.scanAllLexems()):
-        scanner.showLexems()
+    def __init__(self, textName):
+        lexical_scanner.text = open(textName, "r")
 
-fout.close()
+    def buildLexems(self):
+        lexical_scanner.scanAllLexems()
+        for lexemLine in lexical_scanner.lexemsAnalysed:
+            for lexem in lexemLine:
+                self.lexems.append((lexem[0], lexem[1], lexem[4]))
