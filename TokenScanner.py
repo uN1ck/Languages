@@ -1,0 +1,169 @@
+import re
+
+
+class token:
+    def __init__(self, tokenName, tokenID, token, tokenPosition):
+        self.tokenName = tokenName
+        self.tokenID = tokenID
+        self.tokenPosition = tokenPosition
+        self.token = token.strip()
+
+    def __len__(self):
+        return len(self.token)
+
+    def __str__(self):
+        return "[Name: " + str(self.tokenName) + " ID: " + str(self.tokenID) + " Token: \"" + str(
+            self.token) + "\" Position: " + str(self.tokenPosition) + "]"
+
+
+class scanner:
+    tokens = {'Tdef': 'def',
+              'Twhile': 'while',
+              'Treturn': 'return',
+              'Tor': 'or',
+              'Tand': 'and',
+              'Tif': 'if',
+              'Tconst10': '[1-9][0-9]*',
+              'Tconst16': '0x[0-9A-F]+',
+              'Tid': '[a-zA-Z]+',
+              'Tequal': '==',
+              'Tnotequal': '!=',
+              'Tequalmore': '>=',
+              'Tequalless': '<=',
+              'Tmore': '>[^=]',
+              'Tless': '<[^=]',
+              'Tassignment': '=[^=]',
+              'Tplus': '\+',
+              'Tminus': '\-',
+              'Tmul': '\*',
+              'Tdivint': '//',
+              'Tdiv': '/',
+              'Tmod': '%',
+              'Tcomma': ',',
+              'Topenbracket': '\(',
+              'Tclosebracket': '\)',
+              'Topenblock': '\{',
+              'Tcloseblock': '\}'
+              }
+    сomments = {'Tcomment': '#[^\n]*',
+                'Teol': '\n',
+                'Tmulticomment': '\'\'\''
+                }
+
+    def __init__(self, text):
+        self.text = text
+        self.tokensDetected = []
+
+    # Метод определения одного блока, либо систем ывложенных блоков
+    def _defineBlock(self, index, lines):
+
+        currentGap = 0
+        isDetected = False
+        lineIndex = index
+
+        while lineIndex < len(lines):
+            line = lines[lineIndex]
+
+            if (':' in line and not isDetected):
+                lines[lineIndex] = line.replace(':', '{')
+                while (currentGap + 4 < len(line) and line[currentGap:currentGap + 4] == '    '):
+                    currentGap += 4
+                currentGap += 4
+                isDetected = True
+            elif (':' in line and isDetected):
+                lineIndex = self._defineBlock(lineIndex, lines)
+            elif (isDetected):
+                gap = 0
+                while (gap + 4 < len(line) and line[gap:gap + 4] == '    '):
+                    gap += 4
+                if (gap != currentGap):
+                    lines[lineIndex - 1] += ' }'
+                    isDetected = False
+                    currentGap = 0
+                    return lineIndex
+
+            lineIndex += 1
+        return lineIndex
+
+    # Метод определения всех блоков
+    def defineBlocks(self):
+        lineIndex = 0
+
+        while (lineIndex < len(self.text)):
+            lineIndex = self._defineBlock(lineIndex, self.text)
+            lineIndex += 1
+
+    # Метод извещения об ошибке
+    def markError(self, element):
+        print("Scanning error at " + str(element))
+        raise Exception('Lexical error', str(element))
+
+    # Удаление игнорируемых символов
+    def deleteComments(self):
+
+        isComment = False
+        result = []
+
+        for current in self.text:
+            for pattern in self.сomments:
+
+                if (re.match(self.сomments[pattern], current) and pattern == 'Tmulticomment'):
+                    isComment = isComment ^ True
+
+                if (isComment and pattern == 'Tmulticomment'):
+                    current = ''
+                    break
+
+                current = current.strip(' ')
+                current = re.sub(self.сomments[pattern], '', current)
+
+            if (len(current) > 0 and re.fullmatch('_+', current) == None):
+                result.append(current)
+        self.text = result
+        if (isComment):
+            self.markError(("No ending on comment"))
+
+    # Взятие лексемы из строки по индексу символа начала лексемы
+    def _nextLexem(self, line, index):
+        base = index
+        while (index < len(line)):
+            if (line[index] == ' '):
+                index += 1
+            else:
+                break
+
+        for tokenName in self.tokens:
+            currentMatch = re.match(self.tokens[tokenName], line[index:])
+            if (currentMatch != None):
+                return (token(tokenName, hash(tokenName), currentMatch.group(), index),
+                        index + len(currentMatch.group()) - base)
+        self.markError("Unexpected token: \"" + str(line[index]) + "\" at: " + line)
+
+    # Лексический разбор текста
+    def lexems(self):
+        for line in self.text:
+            lineIndex = 0
+            lineBuffer = []
+            while (lineIndex < len(line)):
+                current = self._nextLexem(line, lineIndex)
+                lineIndex += current[1]
+                lineBuffer.append(current[0])
+            self.tokensDetected.append(lineBuffer)
+
+    # Обработать текст
+    def getTokens(self):
+        self.prepareText()
+        self.lexems()
+        return self.tokensDetected
+
+    # Препроцессинг текста
+    def prepareText(self):
+        self.defineBlocks()
+        self.deleteComments()
+
+#
+# scn = scanner(open("input.txt").readlines())
+# for tokensLine in scn.getTokens():
+#     for token in tokensLine:
+#         print(str(token) + " ")
+#     print("\n")

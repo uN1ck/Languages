@@ -2,6 +2,6 @@ def a():
     a = b
 doMes == 1124
 doMe <=< 1
-doMe = 1 !
+doMe = 1
 
 # do not me
