@@ -2,49 +2,50 @@ import re
 
 
 class token:
-    def __init__(self, tokenName, tokenID, token, tokenPosition):
+    def __init__(self, tokenName, tokenID, token, tokenPosition, tokenStringIndex):
         self.tokenName = tokenName
         self.tokenID = tokenID
         self.tokenPosition = tokenPosition
         self.token = token.strip()
+        self.tokenStringIndex = tokenStringIndex
 
     def __len__(self):
         return len(self.token)
 
     def __str__(self):
-        return "[Name: " + str(self.tokenName) + " ID: " + str(self.tokenID) + " Token: \"" + str(
-            self.token) + "\" Position: " + str(self.tokenPosition) + "]"
+        return "[ Name: " + str(self.tokenName) + " ID: " + str(self.tokenID) + " Token: \"" + str(
+            self.token) + "\" at: " + str(self.tokenStringIndex + 1) + "|" + str(self.tokenPosition + 1) + " ]"
 
 
 class scanner:
-    tokens = {'Tdef': 'def',
-              'Twhile': 'while',
-              'Treturn': 'return',
-              'Tor': 'or',
-              'Tand': 'and',
-              'Tif': 'if',
-              'Tconst10': '[1-9][0-9]*',
-              'Tconst16': '0x[0-9A-F]+',
-              'Tid': '[a-zA-Z]+',
-              'Tequal': '==',
-              'Tnotequal': '!=',
-              'Tequalmore': '>=',
-              'Tequalless': '<=',
-              'Tmore': '>[^=]',
-              'Tless': '<[^=]',
-              'Tassignment': '=[^=]',
-              'Tplus': '\+',
-              'Tminus': '\-',
-              'Tmul': '\*',
-              'Tdivint': '//',
-              'Tdiv': '/',
-              'Tmod': '%',
-              'Tcomma': ',',
-              'Topenbracket': '\(',
-              'Tclosebracket': '\)',
-              'Topenblock': '\{',
-              'Tcloseblock': '\}'
-              }
+    tokens = [('Tdef', 'def'),
+              ('Twhile', 'while'),
+              ('Treturn', 'return'),
+              ('Tor', 'or'),
+              ('Tand', 'and'),
+              ('Tif', 'if'),
+              ('Tconst10', '[1-9][0-9]*'),
+              ('Tconst16', '0x[0-9A-F]+'),
+              ('Tid', '[a-zA-Z]+'),
+              ('Tequal', '=='),
+              ('Tnotequal', '!='),
+              ('Tequalmore', '>='),
+              ('Tequalless', '<='),
+              ('Tmore', '>[^=]'),
+              ('Tless', '<[^=]'),
+              ('Tassignment', '=[^=<>]'),
+              ('Tplus', '\+'),
+              ('Tminus', '\-'),
+              ('Tmul', '\*'),
+              ('Tdivint', '//'),
+              ('Tdiv', '/'),
+              ('Tmod', '%'),
+              ('Tcomma', ','),
+              ('Topenbracket', '\('),
+              ('Tclosebracket', '\)'),
+              ('Topenblock', '\{'),
+              ('Tcloseblock', '\}')
+              ]
     сomments = {'Tcomment': '#[^\n]*',
                 'Teol': '\n',
                 'Tmulticomment': '\'\'\''
@@ -71,6 +72,13 @@ class scanner:
                 currentGap += 4
                 isDetected = True
             elif (':' in line and isDetected):
+                gap = 0
+                while (gap + 4 < len(line) and line[gap:gap + 4] == '    '):
+                    gap += 4
+                if (gap != currentGap):
+                    lines[lineIndex - 1] += ' }'
+                    isDetected = False
+                    currentGap = 0
                 lineIndex = self._defineBlock(lineIndex, lines)
             elif (isDetected):
                 gap = 0
@@ -95,7 +103,7 @@ class scanner:
 
     # Метод извещения об ошибке
     def markError(self, element):
-        print("Scanning error at " + str(element))
+        print("Lexical error " + str(element))
         raise Exception('Lexical error', str(element))
 
     # Удаление игнорируемых символов
@@ -124,7 +132,7 @@ class scanner:
             self.markError(("No ending on comment"))
 
     # Взятие лексемы из строки по индексу символа начала лексемы
-    def _nextLexem(self, line, index):
+    def _nextLexem(self, line, index, stringIndex, tabIndex):
         base = index
         while (index < len(line)):
             if (line[index] == ' '):
@@ -132,23 +140,30 @@ class scanner:
             else:
                 break
 
-        for tokenName in self.tokens:
-            currentMatch = re.match(self.tokens[tokenName], line[index:])
+        for cToken in self.tokens:
+            currentMatch = re.match(cToken[1], line[index:])
             if (currentMatch != None):
-                return (token(tokenName, hash(tokenName), currentMatch.group(), index),
+                return (token(cToken[0], hash(cToken[0]), currentMatch.group(), index + 4 * tabIndex, stringIndex),
                         index + len(currentMatch.group()) - base)
         self.markError("Unexpected token: \"" + str(line[index]) + "\" at: " + line)
 
     # Лексический разбор текста
     def lexems(self):
+
+        stringIndex = 0
+        tabIndex = 0
+
         for line in self.text:
+            if ('{' in line): tabIndex += 1
+
             lineIndex = 0
-            lineBuffer = []
             while (lineIndex < len(line)):
-                current = self._nextLexem(line, lineIndex)
+                current = self._nextLexem(line, lineIndex, stringIndex, tabIndex)
                 lineIndex += current[1]
-                lineBuffer.append(current[0])
-            self.tokensDetected.append(lineBuffer)
+                self.tokensDetected.append(current[0])
+            stringIndex += 1
+
+            if ('}' in line): tabIndex -= 1
 
     # Обработать текст
     def getTokens(self):
@@ -163,7 +178,5 @@ class scanner:
 
 #
 # scn = scanner(open("input.txt").readlines())
-# for tokensLine in scn.getTokens():
-#     for token in tokensLine:
-#         print(str(token) + " ")
-#     print("\n")
+# for token in scn.getTokens():
+#     print(str(token.token) + " ")
