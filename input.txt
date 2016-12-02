@@ -1,12 +1,9 @@
 def a():
-    def func(a,b,c):
-        return a+b*c+c//(a%d)
+    def func(a1,a2,a3):
+        return a1+a2+a3*(a1//a2)
 
-while(doMes == 1124):
+while(1):
     doMe = 1
-    a = a+b
-    a(v+coded,w/45)
-    b(a,b,c,-)
-
-
+    a = 2+3
+    a()
 # do not me

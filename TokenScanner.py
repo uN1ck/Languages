@@ -26,7 +26,7 @@ class scanner:
               ('Tif', 'if'),
               ('Tconst10', '[1-9][0-9]*'),
               ('Tconst16', '0x[0-9A-F]+'),
-              ('Tid', '[a-zA-Z]+'),
+              ('Tid', '[a-zA-Z][a-zA-Z0-9]*'),
               ('Tequal', '=='),
               ('Tnotequal', '!='),
               ('Tequalmore', '>='),

@@ -38,6 +38,9 @@ class node:
     def getName(self):
         return self.name
 
+    def __str__(self):
+        return "[" + str(self.type) + " " + self.name + " " + str(len(self.params)) + "]"
+
         #
 
 
@@ -54,20 +57,33 @@ class TokenTree:
             return self._addFunction(name, params)
 
     # Метод проверки наличия объекта в дереве
-    def checkNode(self, name, value, params):
+    def checkNode(self, name, type, params):
         if (type == TokenType.variable):
             return self._checkVariable(name)
         elif (type == TokenType.variable):
             return self._checkFunction(name, params)
+
+    def printTree(self):
+        self._printTree(self.root)
+
+    def _printTree(self, current):
+        print(str(current))
+        if (current.getNeighbour() != None):
+            self._printTree(current.getNeighbour())
+
+        if (current.getChild() != None):
+            print('\n')
+            self._printTree(current.getChild())
 
     #
     # Приватные методы работы с деревом
     #
 
     def _checkVariable(self, name):
-        while (self.current.getName() != name):
-            self.current = self.current.getParent()
-            if (self.current.getType() == TokenType.root):
+        current = self.current
+        while (current.getName() != name):
+            current = current.getParent()
+            if (current.getType() == TokenType.root):
                 return False
         return True
 
@@ -81,22 +97,28 @@ class TokenTree:
     # Метод добавления фейковой врешины
     def _addFake(self):
         self.current.addChild(node("fake", TokenType.fake, self.current, ""))
-        self.current = self.current.getParent()
+        self.current = self.current.getChild()
 
     # Метод смещения текущего указателя дерева выше на один уровень
     def _stepUp(self):
-        while (self.current.getType != TokenType.fake):
+        while (self.current.getType() != TokenType.fake):
             self.current = self.current.getParent()
         self.current = self.current.getParent()
+        while (self.current.getNeighbour() != None):
+            self.current = self.current.getNeighbour()
 
     # Метод доабвления переменной
     def _addVariable(self, name):
         added = node(name, TokenType.variable, self.current, "")
         self.current.addNeighbour(added)
+        self.current = self.current.getNeighbour()
 
     # Метод доабвления функции и премещения указателя на уровень функции переменной
     def _addFunction(self, name, params):
         added = node(name, TokenType.function, self.current, params)
-        self.current.addChild(added)
+        self.current.addNeighbour(added)
         self.current = added
         self._addFake()
+
+        for current in params:
+            self._addVariable(current.token)

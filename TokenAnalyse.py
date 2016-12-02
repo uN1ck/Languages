@@ -1,4 +1,5 @@
 from TokenScanner import scanner, token
+from TokenTree import TokenTree, TokenType, node
 
 
 class TokenAnalyse:
@@ -6,6 +7,7 @@ class TokenAnalyse:
         self.scanner = None
         self.tokens = []
         self.position = 0
+        self.tree = TokenTree()
 
     def scanFile(self, lines):
         self.scanner = scanner(lines)
@@ -15,7 +17,8 @@ class TokenAnalyse:
         try:
             self.state_root()
         except Exception as ex:
-            print(ex)
+            raise ex
+            # print(ex)
             return False
         return True
 
@@ -31,6 +34,10 @@ class TokenAnalyse:
 
     #
 
+    def getTree(self):
+        return self.tree
+
+    #
     def state_A1(self):
         self.state_A2()
         while (self.getAt(0).tokenName == 'Tmore'
@@ -66,12 +73,14 @@ class TokenAnalyse:
             self.state_A5()
 
     def state_A5(self):
-        if (self.getAt(0).tokenName == 'Tconst10'
-            or self.getAt(0).tokenName == 'Tconst16'):
+        if (self.getAt(0).tokenName == 'Tconst10' or self.getAt(0).tokenName == 'Tconst16'):
             self.position += 1
         elif (self.getAt(0).tokenName == 'Tid'):
             if (self.getAt(1).tokenName == 'Topenbracket'):
+                # Проверка идентификатора функции
                 self.state_functionCall()
+            else:
+                self.tree.checkNode(self.getAt(0).token, TokenType.variable, "")
             self.position += 1
         elif (self.getAt(0).tokenName == 'Topenbracket'):
             self.position += 1
@@ -85,9 +94,18 @@ class TokenAnalyse:
 
     def state_functionCall(self):
         if (self.getAt(0).tokenName == 'Tid'):
+            name = self.getAt(0).token
             if (self.getAt(1).tokenName == 'Topenbracket'):
                 self.position += 2
-                self.state_callParameters()
+                argCount = self.position - 1
+
+                if (self.getAt(0).tokenName == "Tid"):
+                    self.state_callParameters()
+
+                argCount = (self.position - argCount) / 2
+
+                self.tree.checkNode(token, TokenType.function, argCount)
+
                 if (self.getAt(0).tokenName == 'Tclosebracket'):
                     self.position += 1
                 else:
@@ -100,12 +118,24 @@ class TokenAnalyse:
     def state_functionDefinition(self):
         if (self.getAt(0).tokenName == 'Tdef'):
             if (self.getAt(1).tokenName == 'Tid'):
+                name = self.getAt(1).token
                 if (self.getAt(2).tokenName == 'Topenbracket'):
                     self.position += 3
+
+                    argCount = self.position
+                    args = []
+
                     if (self.getAt(0).tokenName == 'Tid'):
                         self.state_nameList()
+
                     if (self.getAt(0).tokenName == 'Tclosebracket'):
                         self.position += 1
+
+                        while (argCount < self.position - 1):
+                            args.append(self.getAt(- self.position + argCount))
+                            argCount += 2
+
+                        self.tree.addNode(name, TokenType.function, args)
                         self.state_block()
                     else:
                         return self.markError("Expected [)] got [" + str(self.getAt(0)) + "]")
@@ -122,6 +152,7 @@ class TokenAnalyse:
                 if (self.getAt(1).tokenName == 'Tcomma'):
                     if (self.getAt(2).tokenName == 'Tid'):
                         self.position += 2
+
                     else:
                         return self.markError("Expected [Name] got [" + str(self.getAt(2)) + "]")
                 else:
@@ -149,6 +180,8 @@ class TokenAnalyse:
 
     def state_while(self):
         if (self.getAt(0).tokenName == 'Twhile'):
+            self.tree._addFake()
+
             if (self.getAt(1).tokenName == 'Topenbracket'):
                 self.position += 2
                 self.state_A1()
@@ -165,6 +198,10 @@ class TokenAnalyse:
     def state_assignment(self):
         if (self.getAt(0).tokenName == 'Tid'):
             if (self.getAt(1).tokenName == 'Tassignment'):
+
+                if (not (self.tree.checkNode(self.getAt(0).token, TokenType.variable, ""))):
+                    self.tree.addNode(self.getAt(0).token, TokenType.variable, "")
+
                 self.position += 2
                 self.state_A1()
             else:
@@ -186,6 +223,9 @@ class TokenAnalyse:
                 self.state_expression()
             if (self.getAt(0).tokenName == 'Tcloseblock'):
                 self.position += 1
+
+                self.tree._stepUp()
+
             else:
                 return self.markError("Expected [}] got [" + str(self.getAt(0)) + "]")
         else:
@@ -221,6 +261,7 @@ TA = TokenAnalyse()
 TA.scanFile(open("input.txt").readlines())
 if (TA.analyseFile()):
     print("Passed!")
+    TA.getTree().printTree()
 else:
     print("NOT Passed!")
-#
+    #
