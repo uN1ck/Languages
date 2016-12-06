@@ -38,21 +38,28 @@ class node:
     def getName(self):
         return self.name
 
-    def __str__(self):
-        return "[ (" + str(self.type) + ") " + self.name + " " + str(len(self.params)) + "]"
+    def getParams(self):
+        return self.params
 
-        #
+    def __str__(self):
+        return "[ (" + str(self.type) + ") " + self.name + " " + str(self.params) + "]"
+
+    #
 
 
 class TokenTree:
     def __init__(self):
         self.root = node("root", TokenType.root, None, "")
         self.current = self.root
+        self._addFake()
 
     # Метод добавления объекта в дерево
     def addNode(self, name, type, params):
         if (type == TokenType.variable):
-            return self._addVariable(name)
+            if(self._tryPutName(name, type)):
+                return self._addVariable(name)
+            else:
+                return False
         elif (type == TokenType.function):
             return self._addFunction(name, params)
 
@@ -60,8 +67,15 @@ class TokenTree:
     def checkNode(self, name, type, params):
         if (type == TokenType.variable):
             return self._checkVariable(name)
-        elif (type == TokenType.variable):
-            return self._checkFunction(name, params)
+        elif (type == TokenType.function):
+            if (self._checkFunction(name, params)):
+                for var in params:
+                    if (var.tokenName == "Tid"):
+                        if (not self._checkVariable(var.token)):
+                            return False
+                return True
+            else:
+                return False
 
     def printTree(self):
         self._printTree(self.root)
@@ -81,17 +95,29 @@ class TokenTree:
 
     def _checkVariable(self, name):
         current = self.current
-        while (current.getName() != name and self.current.getType() != TokenType.variable):
+        while (current.getType() != TokenType.root):
+            if (current.getName() == name and current.getType() == TokenType.variable):
+                return True
             current = current.getParent()
-            if (current.getType() == TokenType.root):
-                return False
-        return True
+
+        return False
 
     def _checkFunction(self, name, params):
-        while (self.current.getName() != name and self.current.getType() != TokenType.function):
-            self.current = self.current.getParent()
-            if (self.current.getType() == TokenType.root):
+        current = self.current
+        while (current.getType() != TokenType.root):
+            if (current.getName() == name and current.getType() == TokenType.function):
+                return current.getParams() == len(params)
+            current = current.getParent()
+        return False
+
+
+    # Проверка наличия имени в дереве
+    def _tryPutName(self, name, type):
+        current = self.current
+        while (current.getType() != TokenType.root):
+            if (current.getName() == name):
                 return False
+            current = current.getParent()
         return True
 
     # Метод добавления фейковой врешины
@@ -117,13 +143,15 @@ class TokenTree:
         added = node(name, TokenType.variable, self.current, "")
         self.current.addNeighbour(added)
         self.current = self.current.getNeighbour()
+        return True
 
     # Метод доабвления функции и премещения указателя на уровень функции переменной
     def _addFunction(self, name, params):
-        added = node(name, TokenType.function, self.current, params)
+        added = node(name, TokenType.function, self.current, len(params))
         self.current.addNeighbour(added)
         self.current = added
         self._addFake()
 
         for current in params:
             self._addVariable(current.token)
+        return True

@@ -3,7 +3,7 @@ from TokenTree import TokenTree, TokenType, node
 
 
 class TokenAnalyse:
-    def __init__(self, ):
+    def __init__(self):
         self.scanner = None
         self.tokens = []
         self.position = 0
@@ -17,8 +17,8 @@ class TokenAnalyse:
         try:
             self.state_root()
         except Exception as ex:
-            raise ex
-            # print(ex)
+            # raise ex
+            print(ex)
             return False
         return True
 
@@ -29,8 +29,8 @@ class TokenAnalyse:
         return self.tokens[self.position + index]
 
     def markError(self, element):
-        # print("Unexpected token " + str(element))
-        raise Exception('Unexpected token', str(element))
+        # print("Exception! -> " + str(element))
+        raise Exception('Exception! -> ', str(element))
 
     #
 
@@ -80,7 +80,8 @@ class TokenAnalyse:
                 # Проверка идентификатора функции
                 self.state_functionCall()
             else:
-                self.tree.checkNode(self.getAt(0).token, TokenType.variable, "")
+                if (not self.tree.checkNode(self.getAt(0).token, TokenType.variable, "")):
+                    self.markError("Unexpected identifer: " + str(self.getAt(0)))
             self.position += 1
         elif (self.getAt(0).tokenName == 'Topenbracket'):
             self.position += 1
@@ -94,17 +95,23 @@ class TokenAnalyse:
 
     def state_functionCall(self):
         if (self.getAt(0).tokenName == 'Tid'):
-            name = self.getAt(0).token
+            name = self.getAt(0)
             if (self.getAt(1).tokenName == 'Topenbracket'):
                 self.position += 2
-                argCount = self.position - 1
 
-                if (self.getAt(0).tokenName == "Tid"):
+                argCount = self.position
+                args = []
+
+                if (self.getAt(0).tokenName == 'Tid' or self.getAt(0).tokenName == 'Tconst10' or self.getAt(
+                        0).tokenName == 'Tconst16'):
                     self.state_callParameters()
 
-                argCount = (self.position - argCount) / 2
+                while (argCount < self.position):
+                    args.append(self.getAt(- self.position + argCount))
+                    argCount += 2
 
-                self.tree.checkNode(token, TokenType.function, argCount)
+                if (not self.tree.checkNode(name.token, TokenType.function, args)):
+                    self.markError("Unexpected identifer: " + str(self.getAt(0)))
 
                 if (self.getAt(0).tokenName == 'Tclosebracket'):
                     self.position += 1
@@ -118,7 +125,7 @@ class TokenAnalyse:
     def state_functionDefinition(self):
         if (self.getAt(0).tokenName == 'Tdef'):
             if (self.getAt(1).tokenName == 'Tid'):
-                name = self.getAt(1).token
+                name = self.getAt(1)
                 if (self.getAt(2).tokenName == 'Topenbracket'):
                     self.position += 3
 
@@ -135,7 +142,9 @@ class TokenAnalyse:
                             args.append(self.getAt(- self.position + argCount))
                             argCount += 2
 
-                        self.tree.addNode(name, TokenType.function, args)
+                        if (not self.tree.addNode(name.token, TokenType.function, args)):
+                            self.markError("Unexpected identifer: " + str(name))
+
                         self.state_block()
                     else:
                         return self.markError("Expected [)] got [" + str(self.getAt(0)) + "]")
@@ -199,8 +208,8 @@ class TokenAnalyse:
         if (self.getAt(0).tokenName == 'Tid'):
             if (self.getAt(1).tokenName == 'Tassignment'):
 
-                if (not (self.tree.checkNode(self.getAt(0).token, TokenType.variable, ""))):
-                    self.tree.addNode(self.getAt(0).token, TokenType.variable, "")
+                if (not self.tree.addNode(self.getAt(0).token, TokenType.variable, "")):
+                    self.markError("Unexpected identifer: " + str(self.getAt(0)))
 
                 self.position += 2
                 self.state_A1()

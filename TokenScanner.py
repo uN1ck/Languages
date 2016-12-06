@@ -55,6 +55,7 @@ class scanner:
         self.text = text
         self.tokensDetected = []
 
+
     # Метод определения одного блока, либо систем ывложенных блоков
     def _defineBlock(self, index, lines):
 
@@ -104,7 +105,7 @@ class scanner:
     # Метод извещения об ошибке
     def markError(self, element):
         print("Lexical error " + str(element))
-        raise Exception('Lexical error', str(element))
+        #raise Exception('Lexical error', str(element))
 
     # Удаление игнорируемых символов
     def deleteComments(self):
