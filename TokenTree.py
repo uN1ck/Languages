@@ -42,9 +42,19 @@ class node:
         return self.params
 
     def __str__(self):
-        return "[ (" + str(self.type) + ") " + self.name + " " + str(self.params) + "]"
+        res = "[ Name: " + self.name + " (" + str(self.type) + ") Params:" + str(self.params) + "] -> "
+        if (self.neighbour != None):
+            res += self.neighbour.name
+        else:
+            res += "NONE"
+        res += "\n└-> "
+        if (self.child != None):
+            res += self.child.name
+        else:
+            res += "NONE"
+        return res
 
-    #
+        #
 
 
 class TokenTree:
@@ -56,7 +66,7 @@ class TokenTree:
     # Метод добавления объекта в дерево
     def addNode(self, name, type, params):
         if (type == TokenType.variable):
-            if(self._tryPutName(name, type)):
+            if (self._tryPutName(name, type)):
                 return self._addVariable(name)
             else:
                 return False
@@ -109,7 +119,6 @@ class TokenTree:
                 return current.getParams() == len(params)
             current = current.getParent()
         return False
-
 
     # Проверка наличия имени в дереве
     def _tryPutName(self, name, type):
