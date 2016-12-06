@@ -3,7 +3,9 @@ def a():
         return a1+a2+a3*(a1//a2)
 
 while(1):
-    doMe = 1
-    a = 2+3
+    cycle = 1
+    while(cycle - 1):
+        doMe = 1
+        a = 2+3
     a()
 # do not me

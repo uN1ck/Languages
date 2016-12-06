@@ -39,7 +39,7 @@ class node:
         return self.name
 
     def __str__(self):
-        return "[" + str(self.type) + " " + self.name + " " + str(len(self.params)) + "]"
+        return "[ (" + str(self.type) + ") " + self.name + " " + str(len(self.params)) + "]"
 
         #
 
@@ -81,14 +81,14 @@ class TokenTree:
 
     def _checkVariable(self, name):
         current = self.current
-        while (current.getName() != name):
+        while (current.getName() != name and self.current.getType() != TokenType.variable):
             current = current.getParent()
             if (current.getType() == TokenType.root):
                 return False
         return True
 
     def _checkFunction(self, name, params):
-        while (self.current.getName() != name):
+        while (self.current.getName() != name and self.current.getType() != TokenType.function):
             self.current = self.current.getParent()
             if (self.current.getType() == TokenType.root):
                 return False
@@ -96,8 +96,13 @@ class TokenTree:
 
     # Метод добавления фейковой врешины
     def _addFake(self):
-        self.current.addChild(node("fake", TokenType.fake, self.current, ""))
-        self.current = self.current.getChild()
+        if (self.current.getChild() == None):
+            self.current.addChild(node("fake", TokenType.fake, self.current, ""))
+            self.current = self.current.getChild()
+        else:
+            self.current.addNeighbour(node("neighbour fake", TokenType.fake, self.current, ""))
+            self.current = self.current.getNeighbour()
+            self._addFake()
 
     # Метод смещения текущего указателя дерева выше на один уровень
     def _stepUp(self):
