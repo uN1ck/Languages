@@ -1,5 +1,34 @@
 import re
 
+tokens2 = [('Tdef', 'def'),
+           ('Twhile', 'while'),
+           ('Treturn', 'return'),
+           ('Tor', 'or'),
+           ('Tand', 'and'),
+           ('Tif', 'if'),
+           ('Tconst10', '[1-9][0-9]*'),
+           ('Tconst16', '0x[0-9A-F]+'),
+           ('Tid', '[a-zA-Z][a-zA-Z0-9]*'),
+           ('Tequal', '=='),
+           ('Tnotequal', '!='),
+           ('Tequalmore', '>='),
+           ('Tequalless', '<='),
+           ('Tmore', '>[^=]'),
+           ('Tless', '<[^=]'),
+           ('Tassignment', '=[^=<>]'),
+           ('Tplus', '\+'),
+           ('Tminus', '\-'),
+           ('Tmul', '\*'),
+           ('Tdivint', '//'),
+           ('Tdiv', '/'),
+           ('Tmod', '%'),
+           ('Tcomma', ','),
+           ('Topenbracket', '\('),
+           ('Tclosebracket', '\)'),
+           ('Topenblock', '\{'),
+           ('Tcloseblock', '\}')
+           ]
+
 
 class token:
     def __init__(self, tokenName, tokenID, token, tokenPosition, tokenStringIndex):
@@ -18,43 +47,44 @@ class token:
 
 
 class scanner:
-    tokens = [('Tdef', 'def'),
-              ('Twhile', 'while'),
-              ('Treturn', 'return'),
-              ('Tor', 'or'),
-              ('Tand', 'and'),
-              ('Tif', 'if'),
-              ('Tconst10', '[1-9][0-9]*'),
-              ('Tconst16', '0x[0-9A-F]+'),
-              ('Tid', '[a-zA-Z][a-zA-Z0-9]*'),
-              ('Tequal', '=='),
-              ('Tnotequal', '!='),
-              ('Tequalmore', '>='),
-              ('Tequalless', '<='),
-              ('Tmore', '>[^=]'),
-              ('Tless', '<[^=]'),
-              ('Tassignment', '=[^=<>]'),
-              ('Tplus', '\+'),
-              ('Tminus', '\-'),
-              ('Tmul', '\*'),
-              ('Tdivint', '//'),
-              ('Tdiv', '/'),
-              ('Tmod', '%'),
-              ('Tcomma', ','),
-              ('Topenbracket', '\('),
-              ('Tclosebracket', '\)'),
-              ('Topenblock', '\{'),
-              ('Tcloseblock', '\}')
+    tokens = [('def', 'def'),
+              ('while', 'while'),
+              ('return', 'return'),
+              ('or', 'or'),
+              ('and', 'and'),
+              ('not', 'not'),
+              ('if', 'if'),
+              ('integer', '[1-9][0-9]*'),
+              ('integer', '0x[0-9A-F]+'),
+              ('name', '[a-zA-Z][a-zA-Z0-9]*'),
+              ('==', '=='),
+              ('!=', '!='),
+              ('>=', '>='),
+              ('<=', '<='),
+              ('>', '>[^=]'),
+              ('<', '<[^=]'),
+              ('=', '=[^=<>]'),
+              ('+', '\+'),
+              ('-', '\-'),
+              ('*', '\*'),
+              ('//', '//'),
+              ('/', '/'),
+              ('%', '%'),
+
+              ('(', '\('),
+              (')', '\)'),
+              ('{', '\{'),
+              ('}', '\}')
               ]
-    сomments = {'Tcomment': '#[^\n]*',
-                'Teol': '\n',
-                'Tmulticomment': '\'\'\''
+    сomments = {'Tcomment'     : '#[^\n]*',
+                'Teol'         : '\n',
+                'Tmulticomment': '\'\'\'',
+                'Tcomma'       : ',',
                 }
 
     def __init__(self, text):
         self.text = text
         self.tokensDetected = []
-
 
     # Метод определения одного блока, либо систем ывложенных блоков
     def _defineBlock(self, index, lines):
@@ -68,7 +98,7 @@ class scanner:
 
             if (':' in line and not isDetected):
                 lines[lineIndex] = line.replace(':', '{')
-                while (currentGap + 4 < len(line) and line[currentGap:currentGap + 4] == '    '):
+                while currentGap + 4 < len(line) and line[currentGap:currentGap + 4] == '    ':
                     currentGap += 4
                 currentGap += 4
                 isDetected = True
@@ -105,7 +135,7 @@ class scanner:
     # Метод извещения об ошибке
     def markError(self, element):
         print("Lexical error " + str(element))
-        #raise Exception('Lexical error', str(element))
+        # raise Exception('Lexical error', str(element))
 
     # Удаление игнорируемых символов
     def deleteComments(self):
@@ -124,7 +154,10 @@ class scanner:
                     break
 
                 current = current.strip(' ')
-                current = re.sub(self.сomments[pattern], '', current)
+                if pattern == "Tcomma":
+                    current = re.sub(self.сomments[pattern], ' ', current)
+                else:
+                    current = re.sub(self.сomments[pattern], '', current)
 
             if (len(current) > 0 and re.fullmatch('_+', current) == None):
                 result.append(current)
@@ -176,6 +209,7 @@ class scanner:
     def prepareText(self):
         self.defineBlocks()
         self.deleteComments()
+
 
 #
 # scn = scanner(open("input.txt").readlines())
