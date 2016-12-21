@@ -203,6 +203,7 @@ class scanner:
     def getTokens(self):
         self.prepareText()
         self.lexems()
+        self.tokensDetected.append(token("#", hash(""), "", 0, 0))
         return self.tokensDetected
 
     # Препроцессинг текста

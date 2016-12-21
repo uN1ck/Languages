@@ -6,7 +6,7 @@ while(1):
     cycle = 1
     while(cycle - 1):
         doMe = 1
-        q = 2+3
+        q = (((((2+3))))
         def q(a,b,c):
             w = q+a
         ar = 3

@@ -6,8 +6,8 @@ nonTerminalTokens = {"program", "expression", "function_def", "operator", "opera
                      "block", "A1", "A2", "A3", "A4", "A5", "A1R", "A2R", "A3R", "A4R", "function_call", "assignment",
                      "while_cycle", "return_op", "parameters_list", "parameters_list_tail", ""}
 
-terminalTokens = {">", ">=", "==", "<=", "<", "+", "-", "/", "//", "", "%", "*", "name", "while", "integer", "float",
-                  "(", ")", "{", "}", "def", "nd", "or", "not", "return"}
+terminalTokens = {">", ">=", "==", "<=", "<", "!=", "+", "-", "/", "//", "", "%", "*", "=", "name", "while", "integer",
+                  "(", ")", "{", "}", "def", "or", "not", "return", "#"}
 
 LL1Table = {
     "program"             : {
@@ -20,6 +20,7 @@ LL1Table = {
         "return" : ["expression"],
         "}"      : ["E"],
         ")"      : ["E"],
+        "#"      : ["E"]
     },
     "expression"          : {
         "name"   : ["operator", "operation"],  # Чекнуть оператор или операция
@@ -40,10 +41,9 @@ LL1Table = {
         "return": ["return_op"]
     },
     "operation"           : {
-        "name"   : ["operation", "A1"],
-        "integer": ["operation", "A1"],
-        "("      : ["operation", "A1"],
-        ")"      : ["operation", "A1"],
+        "name"   : ["A1"],
+        "integer": ["A1"],
+        "("      : ["A1"],
         "any"    : ["E"],
     },
     "name_list_tail"      : {
@@ -60,32 +60,30 @@ LL1Table = {
         "name"   : ["A1R", "A2"],
         "integer": ["A1R", "A2"],
         "("      : ["A1R", "A2"],
-        ")"      : ["A1R", "A2"],
+
     },
     "A2"                  : {
         "name"   : ["A2R", "A3"],
         "integer": ["A2R", "A3"],
         "("      : ["A2R", "A3"],
-        ")"      : ["A2R", "A3"],
+
     },
     "A3"                  : {
         "name"   : ["A3R", "A4"],
         "integer": ["A3R", "A4"],
         "("      : ["A3R", "A4"],
-        ")"      : ["A3R", "A4"],
+
     },
     "A4"                  : {
         "name"   : ["A4R", "A5"],
         "integer": ["A4R", "A5"],
         "("      : ["A4R", "A5"],
-        ")"      : ["A4R", "A5"],
 
     },
     "A5"                  : {
         "name"   : ["name"],
         "integer": ["integer"],
-        "("      : ["("],
-        ")"      : [")"],
+        "("      : [")", "operation", "("],
 
     },
     "A1R"                 : {
@@ -177,7 +175,7 @@ class LLOne:
         while True:
             if self._peek() in terminalTokens:
                 if self._peek() == self._current_token().tokenName:
-                    if self._current_token() == "#":
+                    if self._current_token().tokenName == "#":
                         return True
                     else:
                         self._next_token()
@@ -188,11 +186,19 @@ class LLOne:
             else:
                 if self._current_token().tokenName in self.table[self._peek()]:
                     buffer = self._pop()
+
+                    # Разрешение конфликта в выражении
                     if self._current_token().tokenName == "name" and buffer == "expression":
-                        if re.match("<|<=|==|>=|>|!=|\*|/|//|%|\+|-|and|or|not", self.tokenList[self.tokenListPosition + 1].tokenName):
+                        if re.match("<|<=|==|>=|>|!=|\*|/|//|%|\+|-|and|or|not|\(", self.tokenList[self.tokenListPosition + 1].tokenName):
                             self._put("operation")
                         else:
                             self._put("operator")
+                    # Разрешение конфликта в A5б когда мы снова не знаем, функцияэто или имя
+                    elif self._current_token().tokenName == "name" and buffer == "A5":
+                        if self.tokenList[self.tokenListPosition + 1].tokenName == "(":
+                            self._put("function_call")
+                        else:
+                            self._put("name")
                     else:
                         for current in self.table[buffer][self._current_token().tokenName]:
                             self._put(current)
@@ -217,4 +223,4 @@ try:
     else:
         print("NOT Passed!")
 except Exception as e:
-    print(e)
+    print("NOT Passed!")
